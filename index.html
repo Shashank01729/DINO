@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chrome Dinosaur Game</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-color: #f7f7f7;
+    }
+
+    canvas {
+      display: block;
+      background-color: #f7f7f7;
+    }
+
+    .game-over {
+      font-size: 50px;
+      color: black;
+      position: absolute;
+      top: 40%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: none;
+    }
+
+    .restart {
+      font-size: 20px;
+      color: black;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: none;
+    }
+
+    .start-message {
+      font-size: 30px;
+      color: black;
+      position: absolute;
+      top: 40%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: block;
+    }
+
+    .instructions {
+      position: absolute;
+      top: 10%;
+      right: 5%;
+      font-size: 20px;
+      color: black;
+      text-align: right;
+      display: none;
+    }
+
+    .instructions p {
+      margin: 5px 0;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+  <div class="start-message" id="startMessage">Press Space to Start</div>
+  <div class="game-over" id="gameOver">GAME OVER</div>
+  <div class="restart" id="restartMessage">Press Enter to Restart</div>
+  <div class="instructions" id="instructions">
+    <p>Press F to Fly</p>
+    <p>Press G to Cut Cactus</p>
+  </div>
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const dinoHeight = 40;
+    const dinoWidth = 50;
+    const dinoGravity = 0.8;
+    const dinoJumpForce = -15;
+    const dinoSpeed = 5;
+
+    const cactusHeight = 40;
+    const cactusWidth = 20;
+    const cactusSpeed = 6;
+
+    let dinoY = canvas.height - dinoHeight;
+    let dinoVelocity = 0;
+    let isJumping = false;
+    let dinoX = 50;
+    let cactusX = canvas.width + 800;
+    let score = 0;
+    let gameOver = false;
+    let hasPowerUp = false;
+    let isFlying = false;
+    let flyingDuration = 0;
+    let legOffset = 0;
+
+    const gameOverDiv = document.getElementById("gameOver");
+    const restartMessageDiv = document.getElementById("restartMessage");
+    const startMessageDiv = document.getElementById("startMessage");
+    const instructionsDiv = document.getElementById("instructions");
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+
+    function drawDino() {
+      ctx.fillStyle = "grey";
+      ctx.fillRect(dinoX, dinoY, 50, 30);
+      ctx.fillStyle = "grey";
+      ctx.fillRect(dinoX + 35, dinoY - 15, 15, 15);
+      ctx.fillStyle = "grey";
+      ctx.fillRect(dinoX - 10, dinoY + 15, 10, 10);
+      ctx.fillStyle = "grey";
+      ctx.fillRect(dinoX + 5, dinoY + 30, 10, 10 + legOffset);
+      ctx.fillRect(dinoX + 35, dinoY + 30, 10, 10 - legOffset);
+    }
+
+    function drawCactus() {
+      if (cactusX > 0) {
+        ctx.fillStyle = "green";
+        ctx.fillRect(cactusX, canvas.height - cactusHeight, cactusWidth, cactusHeight);
+      }
+    }
+
+    function drawScore() {
+      ctx.fillStyle = "black";
+      ctx.font = "20px Arial";
+      ctx.fillText("Score: " + score, 20, 30);
+    }
+
+    function jump() {
+      if (!isJumping && !isFlying) {
+        dinoVelocity = dinoJumpForce;
+        isJumping = true;
+      }
+    }
+
+    function updateGame() {
+      if (gameOver) return;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (isFlying) {
+        dinoY -= 1;
+        flyingDuration -= 0.016;
+        if (flyingDuration <= 0) {
+          isFlying = false;
+        }
+      } else {
+        dinoY += dinoVelocity;
+        if (dinoY >= canvas.height - dinoHeight) {
+          dinoY = canvas.height - dinoHeight;
+          isJumping = false;
+          dinoVelocity = 0;
+        } else {
+          dinoVelocity += dinoGravity;
+        }
+      }
+
+      cactusX -= cactusSpeed;
+      if (cactusX + cactusWidth <= 0) {
+        cactusX = canvas.width + 200;
+        score++;
+      }
+
+      if (score >= 5) {
+        hasPowerUp = true;
+        instructionsDiv.style.display = "block";
+      }
+
+      if (score < 5) {
+        hasPowerUp = false;
+        instructionsDiv.style.display = "none";
+      }
+
+      if (hasPowerUp && cactusX + cactusWidth > 0 && cactusX < canvas.width) {
+        if (
+          dinoX + dinoWidth > cactusX &&
+          dinoX < cactusX + cactusWidth &&
+          dinoY + dinoHeight > canvas.height - cactusHeight
+        ) {
+          gameOver = true;
+          gameOverDiv.style.display = "block";
+          restartMessageDiv.style.display = "block";
+        }
+      }
+
+      if (!hasPowerUp && 
+        dinoX + dinoWidth > cactusX &&
+        dinoX < cactusX + cactusWidth &&
+        dinoY + dinoHeight > canvas.height - cactusHeight
+      ) {
+        gameOver = true;
+        gameOverDiv.style.display = "block";
+        restartMessageDiv.style.display = "block";
+      }
+
+      legOffset = (Math.sin(Date.now() / 100) * 5);
+
+      drawDino();
+      drawCactus();
+      drawScore();
+
+      requestAnimationFrame(updateGame);
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === " " && !gameOver && !startMessageDiv.style.display) {
+        startMessageDiv.style.display = "none";
+        updateGame();
+      }
+
+      if (e.key === " " && startMessageDiv.style.display === "block") {
+        startMessageDiv.style.display = "none";
+        updateGame();
+      } else if (e.key === " " && gameOver) {
+        gameOver = false;
+        score = 0;
+        dinoY = canvas.height - dinoHeight;
+        dinoVelocity = 0;
+        isJumping = false;
+        cactusX = canvas.width + 800;
+        gameOverDiv.style.display = "none";
+        restartMessageDiv.style.display = "none";
+        instructionsDiv.style.display = "none";
+        updateGame();
+      } else if (e.key === "Enter" && gameOver) {
+        score = 0;
+        dinoY = canvas.height - dinoHeight;
+        dinoVelocity = 0;
+        isJumping = false;
+        cactusX = canvas.width + 800;
+        gameOver = false;
+        hasPowerUp = false;
+        isFlying = false;
+        flyingDuration = 0;
+        gameOverDiv.style.display = "none";
+        restartMessageDiv.style.display = "none";
+        instructionsDiv.style.display = "none";
+        updateGame();
+      }
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === " " || e.key === "ArrowUp") {
+        jump();
+      } else if (e.key === "g" || e.key === "G") {
+        if (hasPowerUp && score >= 5) {
+          cactusX = -cactusWidth;
+          score = Math.max(0, score - 5);
+          hasPowerUp = false;
+        }
+      } else if (e.key === "f" || e.key === "F") {
+        if (score >= 5) {
+          isFlying = true;
+          flyingDuration = 10;
+          score = Math.max(0, score - 5);
+        }
+      }
+    });
+
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
+  </script>
+</body>
+</html>
